@@ -47,7 +47,7 @@ def which_set(filename, validation_percentage, testing_percentage):
   return result
 
 def encode_image(image_filepath):
-  print("Encoding", image_filepath)
+  # print("Encoding", image_filepath)
   with tf.Session() as sess:
     input_filename = tf.placeholder(tf.string, [])
     wav_loader = io_ops.read_file(input_filename)
@@ -86,20 +86,30 @@ class Datasets:
 class Dataset:
   def __init__(self, x, y):
     self.x = x
+    self.num_examples = len(x)
     self.y = y
+
+  def fetch_batch(self, offset, batch_size):
+    start = offset * batch_size
+    end = start + batch_size
+
+    x_files = self.x[start:end]
+    y_batch = self.y[start:end]
+
+    x_encoded_data = []
+    for file in x_files:
+      encoded_data = encode_image(file)
+      x_encoded_data.append(encoded_data)
+
+    x_batch = np.array(x_encoded_data)
+
+    return [x_batch, y_batch]
+
 
 def load_data(path):
   files_path = os.path.join(path, '**/*.wav')
   files = glob.glob(files_path)
   np.random.shuffle(files)
-
-  files = files[0:1000]
-
-  # buckets = {
-  #   'training':   [],
-  #   'validation': [],
-  #   'testing':    []
-  # }
 
   label_buckets = {}
   for file in files:
@@ -122,17 +132,12 @@ def load_data(path):
     label = file.split(os.sep)[-2]
 
     label_index = label_to_int[label]
-    # label_one_hot = int_to_onehot[label_index]
 
-    encoded_data = encode_image(file)
-    training_x.append(encoded_data)
+    training_x.append(file)
     training_y.append(label_index)
 
-  train_x = np.array(training_x)
   train_y = np.array(training_y, dtype=int)
 
-  training   = Dataset(train_x, train_y)
-  # validation = Dataset(buckets['validation'][:300])
-  # testing    = Dataset(buckets['testing'][:300])
+  training = Dataset(training_x, train_y)
 
   return Datasets(training, None, None)
