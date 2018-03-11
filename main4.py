@@ -7,26 +7,21 @@ from keras.utils import to_categorical
 
 model = Sequential()
 
-from keras.layers import Dense
+from keras.layers import Dense, Conv2D
+from audio_data import load_data
 
-cmds = load_data('/home/nk/Development/scratch/speech_commands')
 
-batch_size = 200
-
-def generator(path):
+def generator(path, batch_size):
+  cmds = load_data(path)
+  offset = 0
   while 1:
-    x, y = process_line(line)
-    yield (img, y)
+    x, y = cmds.train.fetch_batch(offset, batch_size)
+    yield (x, y)
+    offset += 1
 
-
-model.add(Dense(30, input_shape=(3920,)))
+model.add(Dense(31, input_shape=(3920,)))
 model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-model.fit_generator(generator('/home/nk/Development/scratch/speech_commands'), samples_per_epoch=10000, nb_epoch=10)
+batch_size = 100
 
-# for step in range(int(cmds.train.num_examples / batch_size)):
-#   x_batch, y_batch = cmds.train.fetch_batch(step, batch_size)
-#   y_batch_one_hot = to_categorical(y_batch)
-#   loss, acc = model.train_on_batch(x_batch, y_batch_one_hot)
-#   print(model.metrics_names[0], loss, model.metrics_names[1], acc)
-
+model.fit_generator(generator('/home/nk/Development/scratch/speech_commands', batch_size), steps_per_epoch=10000, epochs=10)

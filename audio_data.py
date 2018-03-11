@@ -132,9 +132,10 @@ def load_data(path):
     label = file.split(os.sep)[-2]
 
     label_index = label_to_int[label]
+    label_one_hot = int_to_onehot[label_index]
 
     training_x.append(file)
-    training_y.append(label_index)
+    training_y.append(label_one_hot)
 
   train_y = np.array(training_y, dtype=int)
 
