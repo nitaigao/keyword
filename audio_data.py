@@ -27,6 +27,11 @@ else:
 
 fingerprint_size = dct_coefficient_count * spectrogram_length
 
+input_time_size = spectrogram_length
+input_frequency_size = dct_coefficient_count
+
+# print(input_time_size, input_frequency_size)
+
 
 MAX_NUM_WAVS_PER_CLASS = 2**27 - 1 # ~134M
 
@@ -88,27 +93,43 @@ class Dataset:
     self.x = x
     self.num_examples = len(x)
     self.y = y
+    self.cache = {}
 
   def fetch_batch(self, offset, batch_size):
     start = offset * batch_size
     end = start + batch_size
+    # print(f"\n{start} => {end} / {self.num_examples}")
 
-    x_files = self.x[start:end]
+    if offset in self.cache:
+      x_batch = self.cache[offset]
+    else:
+      x_files = self.x[start:end]
+
+      x_encoded_data = []
+      for file in x_files:
+        encoded_data = encode_image(file)
+        x_encoded_data.append(encoded_data)
+
+      x_batch = np.array(x_encoded_data)
+      self.cache[offset] = x_batch
+
     y_batch = self.y[start:end]
-
-    x_encoded_data = []
-    for file in x_files:
-      encoded_data = encode_image(file)
-      x_encoded_data.append(encoded_data)
-
-    x_batch = np.array(x_encoded_data)
-
     return [x_batch, y_batch]
 
 
-def load_data(path):
-  files_path = os.path.join(path, '**/*.wav')
+def filenames(path, pattern):
+  files_path = os.path.join(path, pattern)
   files = glob.glob(files_path)
+  return files
+
+def load_data(path):
+  files = []
+  files.extend(filenames(path, 'left/*.wav'))
+  files.extend(filenames(path, 'right/*.wav'))
+  files.extend(filenames(path, 'up/*.wav'))
+  files.extend(filenames(path, 'down/*.wav'))
+  files.extend(filenames(path, 'wow/*.wav'))
+
   np.random.shuffle(files)
 
   label_buckets = {}
@@ -135,7 +156,7 @@ def load_data(path):
     label_one_hot = int_to_onehot[label_index]
 
     training_x.append(file)
-    training_y.append(label_one_hot)
+    training_y.append(label_index)
 
   train_y = np.array(training_y, dtype=int)
 
