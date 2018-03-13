@@ -124,6 +124,17 @@ def filenames(path, pattern):
 
 def load_data(path):
   files = []
+
+  files.extend(filenames(path, 'one/*.wav'))
+  files.extend(filenames(path, 'two/*.wav'))
+  files.extend(filenames(path, 'three/*.wav'))
+  files.extend(filenames(path, 'four/*.wav'))
+  files.extend(filenames(path, 'five/*.wav'))
+  files.extend(filenames(path, 'six/*.wav'))
+  files.extend(filenames(path, 'seven/*.wav'))
+  files.extend(filenames(path, 'eight/*.wav'))
+  files.extend(filenames(path, 'nine/*.wav'))
+  files.extend(filenames(path, 'zero/*.wav'))
   files.extend(filenames(path, 'left/*.wav'))
   files.extend(filenames(path, 'right/*.wav'))
   files.extend(filenames(path, 'up/*.wav'))
@@ -148,6 +159,9 @@ def load_data(path):
   training_x = []
   training_y = []
 
+  testing_x = []
+  testing_y = []
+
   for file in files:
     set = which_set(file, 20, 20)
     label = file.split(os.sep)[-2]
@@ -155,11 +169,19 @@ def load_data(path):
     label_index = label_to_int[label]
     label_one_hot = int_to_onehot[label_index]
 
-    training_x.append(file)
-    training_y.append(label_index)
+    if set == 'training':
+      training_x.append(file)
+      training_y.append(label_index)
+
+    if set == 'testing':
+      testing_x.append(file)
+      testing_y.append(label_index)
 
   train_y = np.array(training_y, dtype=int)
-
   training = Dataset(training_x, train_y)
+  print(f"{len(training_x)} available training samples")
 
-  return Datasets(training, None, None)
+  test_y = np.array(testing_y, dtype=int)
+  testing = Dataset(testing_x, test_y)
+
+  return Datasets(training, None, testing)
