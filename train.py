@@ -1,6 +1,7 @@
 from keras.models import Sequential
 from keras.layers import Dense, Conv2D, MaxPooling2D, Flatten
 from keras.utils import np_utils
+from keras.callbacks import Callback
 from sklearn.metrics import classification_report, confusion_matrix
 import numpy as np
 
@@ -12,6 +13,18 @@ num_classes = 15
 
 path = '/home/nk/Development/scratch/speech_commands'
 cmds = load_data(path)
+
+class Callbacks(Callback):
+  def on_epoch_end(self, epoch, logs={}):
+    x, y = cmds.test.fetch_batch(0, 100)
+    x_test = x.reshape(-1, 98, 40, 1)
+    y_test = np_utils.to_categorical(y, num_classes)
+
+    predictions = model.predict(x_test, batch_size=100)
+    classes = np.argmax(predictions, axis=1)
+
+    print(confusion_matrix(y, classes))
+    return
 
 def train_generator(batch_size, steps):
   step = 0
@@ -33,8 +46,8 @@ model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accur
 
 batch_size = 100
 steps = 20000 / batch_size
-
-model.fit_generator(train_generator(batch_size, steps), steps_per_epoch=steps, epochs=10)
+callbacks = Callbacks()
+model.fit_generator(train_generator(batch_size, steps), steps_per_epoch=steps, epochs=10, callbacks=[callbacks])
 
 x, y = cmds.test.fetch_batch(0, 100)
 x_test = x.reshape(-1, 98, 40, 1)

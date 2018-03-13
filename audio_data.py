@@ -3,10 +3,13 @@ import glob
 import os
 import re
 import hashlib
+from multiprocessing import Pool
 
 import tensorflow as tf
+import pickle
 from tensorflow.contrib.framework.python.ops import audio_ops as contrib_audio
 from tensorflow.python.ops import io_ops
+from os import path
 
 desired_channels = 1
 sample_rate = 16000
@@ -93,26 +96,13 @@ class Dataset:
     self.x = x
     self.num_examples = len(x)
     self.y = y
-    self.cache = {}
 
   def fetch_batch(self, offset, batch_size):
     start = offset * batch_size
     end = start + batch_size
     # print(f"\n{start} => {end} / {self.num_examples}")
 
-    if offset in self.cache:
-      x_batch = self.cache[offset]
-    else:
-      x_files = self.x[start:end]
-
-      x_encoded_data = []
-      for file in x_files:
-        encoded_data = encode_image(file)
-        x_encoded_data.append(encoded_data)
-
-      x_batch = np.array(x_encoded_data)
-      self.cache[offset] = x_batch
-
+    x_batch = np.array(self.x[start:end])
     y_batch = self.y[start:end]
     return [x_batch, y_batch]
 
@@ -122,24 +112,39 @@ def filenames(path, pattern):
   files = glob.glob(files_path)
   return files
 
-def load_data(path):
+def pickle_data(file):
+  mfcc_filename = file + '.pkl'
+  if not path.exists(mfcc_filename):
+    encoded_data = encode_image(file)
+    print(f"Caching {file}")
+    with open(mfcc_filename, 'wb') as mfcc_file:
+      pickle.dump(encoded_data, mfcc_file)
+  return mfcc_filename
+
+def cache_data(files):
+  pool = Pool(processes=4)
+  pool.map(pickle_data, files)
+
+def load_data(samples_path):
   files = []
 
-  files.extend(filenames(path, 'one/*.wav'))
-  files.extend(filenames(path, 'two/*.wav'))
-  files.extend(filenames(path, 'three/*.wav'))
-  files.extend(filenames(path, 'four/*.wav'))
-  files.extend(filenames(path, 'five/*.wav'))
-  files.extend(filenames(path, 'six/*.wav'))
-  files.extend(filenames(path, 'seven/*.wav'))
-  files.extend(filenames(path, 'eight/*.wav'))
-  files.extend(filenames(path, 'nine/*.wav'))
-  files.extend(filenames(path, 'zero/*.wav'))
-  files.extend(filenames(path, 'left/*.wav'))
-  files.extend(filenames(path, 'right/*.wav'))
-  files.extend(filenames(path, 'up/*.wav'))
-  files.extend(filenames(path, 'down/*.wav'))
-  files.extend(filenames(path, 'wow/*.wav'))
+  files.extend(filenames(samples_path, 'one/*.wav'))
+  files.extend(filenames(samples_path, 'two/*.wav'))
+  files.extend(filenames(samples_path, 'three/*.wav'))
+  files.extend(filenames(samples_path, 'four/*.wav'))
+  files.extend(filenames(samples_path, 'five/*.wav'))
+  files.extend(filenames(samples_path, 'six/*.wav'))
+  files.extend(filenames(samples_path, 'seven/*.wav'))
+  files.extend(filenames(samples_path, 'eight/*.wav'))
+  files.extend(filenames(samples_path, 'nine/*.wav'))
+  files.extend(filenames(samples_path, 'zero/*.wav'))
+  files.extend(filenames(samples_path, 'left/*.wav'))
+  files.extend(filenames(samples_path, 'right/*.wav'))
+  files.extend(filenames(samples_path, 'up/*.wav'))
+  files.extend(filenames(samples_path, 'down/*.wav'))
+  files.extend(filenames(samples_path, 'wow/*.wav'))
+
+  cache_data(files)
 
   np.random.shuffle(files)
 
@@ -169,13 +174,19 @@ def load_data(path):
     label_index = label_to_int[label]
     label_one_hot = int_to_onehot[label_index]
 
-    if set == 'training':
-      training_x.append(file)
-      training_y.append(label_index)
+    mfcc_filename = file + '.pkl'
 
-    if set == 'testing':
-      testing_x.append(file)
-      testing_y.append(label_index)
+    with open(mfcc_filename, 'rb') as mfcc_file:
+      encoded_data = pickle.load(mfcc_file)
+      encoded_x = np.array(encoded_data)
+
+      if set == 'training':
+        training_x.append(encoded_x)
+        training_y.append(label_index)
+
+      if set == 'testing':
+        testing_x.append(encoded_x)
+        testing_y.append(label_index)
 
   train_y = np.array(training_y, dtype=int)
   training = Dataset(training_x, train_y)
