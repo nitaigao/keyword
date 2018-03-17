@@ -1,6 +1,7 @@
 from os import makedirs, path
 from keras.models import Sequential
-from keras.layers import Dense, Conv2D, Dropout, MaxPooling2D, Flatten
+from keras.optimizers import SGD
+from keras.layers import Dense, Conv2D, Dropout, MaxPooling2D, Flatten, Activation
 from keras.utils import np_utils
 from keras.callbacks import Callback
 from sklearn.metrics import confusion_matrix
@@ -10,8 +11,8 @@ import time
 from audio_data import load_data
 
 NUM_CLASSES = 15
-EPOCHS = 200
-BATCH_SIZE = 100
+EPOCHS = 150
+BATCH_SIZE = 128
 
 CMDS = load_data('./data')
 
@@ -38,16 +39,25 @@ def main():
     timestamp = int(time.time())
     session_directory = f"./tmp/{timestamp}"
     makedirs(session_directory)
-    model = Sequential()
 
-    model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(98, 40, 1)))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model = Sequential()
+    model.add(Conv2D(128, 5, border_mode='valid', input_shape=(98, 40, 1)))
+    model.add(MaxPooling2D(pool_size=(1, 4), strides=(1, 4)))
     model.add(Flatten())
     model.add(Dropout(0.4))
-    model.add(Dense(NUM_CLASSES, activation='softmax'))
-
+    model.add(Dense(256))
+    model.add(Activation('relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(256))
+    model.add(Activation('relu'))
+    model.add(Dropout(0.3))
+    model.add(Dense(NUM_CLASSES))
+    model.add(Activation('softmax'))
     model.summary()
-    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    sgd = SGD(lr = 0.02)
+
+    model.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy'])
 
     callbacks = Callbacks(model, session_directory)
     train_x = CMDS.train.x.reshape(-1, 98, 40, 1)
