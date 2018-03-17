@@ -111,7 +111,7 @@ confidence=
 #
 # disable=bad-continuation  (Bad whitespace on following line)
 # disable=no-self-use       (Member function never uses 'self' parameter)
-# disable=missing-docstring
+disable=missing-docstring
 # disable=fixme
 # disable=star-args
 # disable=locally-disabled  (Notes local suppression of warning)

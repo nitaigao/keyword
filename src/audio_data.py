@@ -53,8 +53,24 @@ def which_set(filename, validation_percentage, testing_percentage):
 
     return result
 
+def encode_data(audio_data, sample_rate):
+    spectrogram = contrib_audio.audio_spectrogram(
+        audio_data,
+        window_size_samples,
+        window_stride_samples
+    )
+
+    print(spectrogram.shape)
+
+    mfcc = contrib_audio.mfcc(
+        spectrogram,
+        sample_rate=sample_rate,
+        dct_coefficient_count=dct_coefficient_count
+    )
+
+    return mfcc
+
 def encode_image(image_filepath):
-    # print("Encoding", image_filepath)
     with tf.Session() as sess:
         input_filename = tf.placeholder(tf.string, [])
         wav_loader = io_ops.read_file(input_filename)
@@ -65,17 +81,7 @@ def encode_image(image_filepath):
             desired_samples=sample_rate
         )
 
-        spectrogram = contrib_audio.audio_spectrogram(
-            wav_decoder.audio,
-            window_size_samples,
-            window_stride_samples
-        )
-
-        mfcc = contrib_audio.mfcc(
-            spectrogram,
-            sample_rate=wav_decoder.sample_rate,
-            dct_coefficient_count=dct_coefficient_count
-        )
+        mfcc = encode_data(wav_decoder.audio, wav_decoder.sample_rate)
 
         feed_dict = {
             input_filename: image_filepath
