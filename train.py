@@ -1,9 +1,11 @@
+from os import makedirs, path
 from keras.models import Sequential
 from keras.layers import Dense, Conv2D, Dropout, MaxPooling2D, Flatten
 from keras.utils import np_utils
 from keras.callbacks import Callback
 from sklearn.metrics import confusion_matrix
 import numpy as np
+import time
 
 from audio_data import load_data
 
@@ -13,10 +15,12 @@ BATCH_SIZE = 100
 
 CMDS = load_data('./data')
 
+
 class Callbacks(Callback):
-    def __init__(self, model):
+    def __init__(self, model, session):
         super().__init__()
         self.model = model
+        self.session = session
 
     def on_epoch_end(self, epoch, logs):
         x_test = CMDS.test.x.reshape(-1, 98, 40, 1)
@@ -27,10 +31,13 @@ class Callbacks(Callback):
 
         print(confusion_matrix(CMDS.test.y, classes))
 
-        model_filename = f"/tmp/model-{epoch}.h5"
+        model_filename = path.join(self.session, f"model-{epoch}.h5")
         self.model.save(model_filename)
 
 def main():
+    timestamp = int(time.time())
+    session_directory = f"./tmp/{timestamp}"
+    makedirs(session_directory)
     model = Sequential()
 
     model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(98, 40, 1)))
@@ -42,7 +49,7 @@ def main():
     model.summary()
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-    callbacks = Callbacks(model)
+    callbacks = Callbacks(model, session_directory)
     train_x = CMDS.train.x.reshape(-1, 98, 40, 1)
     train_y = np_utils.to_categorical(CMDS.train.y, NUM_CLASSES)
     model.fit(train_x, train_y, epochs=EPOCHS, callbacks=[callbacks], batch_size=BATCH_SIZE)
