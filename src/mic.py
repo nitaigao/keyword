@@ -27,9 +27,11 @@ def main():
 
     while True:
         available = stream.get_read_available()
+        print(available)
         if available > 0:
-            data = stream.read(CHUNK)
-            output.write(data)
+            for _ in range(int(available / CHUNK)):
+                data = stream.read(CHUNK)
+                output.write(data)
         else:
             output.write(silence)
 
