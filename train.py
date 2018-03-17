@@ -8,8 +8,10 @@ import numpy as np
 from audio_data import load_data
 
 NUM_CLASSES = 15
+EPOCHS = 200
+BATCH_SIZE = 100
 
-CMDS = load_data('/home/nk/Development/scratch/speech_commands')
+CMDS = load_data('./data')
 
 class Callbacks(Callback):
     def __init__(self, model):
@@ -17,27 +19,16 @@ class Callbacks(Callback):
         self.model = model
 
     def on_epoch_end(self, epoch, logs):
-        x, y = CMDS.test.fetch_batch(0, 100)
-        x_test = x.reshape(-1, 98, 40, 1)
-        y_test = np_utils.to_categorical(y, NUM_CLASSES)
+        x_test = CMDS.test.x.reshape(-1, 98, 40, 1)
+        y_test = np_utils.to_categorical(CMDS.test.y, NUM_CLASSES)
 
-        predictions = self.model.predict(x_test, batch_size=100)
+        predictions = self.model.predict(x_test, batch_size=BATCH_SIZE)
         classes = np.argmax(predictions, axis=1)
 
-        print(confusion_matrix(y, classes))
-        return
+        print(confusion_matrix(CMDS.test.y, classes))
 
-def train_generator(batch_size, steps):
-    step = 0
-    while 1:
-        if steps == step:
-            step = 0
-
-        x, y = CMDS.train.fetch_batch(step, batch_size)
-        x = x.reshape(-1, 98, 40, 1)
-        y = np_utils.to_categorical(y, NUM_CLASSES)
-        yield (x, y)
-        step += 1
+        model_filename = f"/tmp/model-{epoch}.h5"
+        self.model.save(model_filename)
 
 def main():
     model = Sequential()
@@ -51,19 +42,9 @@ def main():
     model.summary()
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-    epochs = 200
-    batch_size = 100
-    steps = 20000 / batch_size
     callbacks = Callbacks(model)
-    model.fit_generator(train_generator(batch_size, steps), steps_per_epoch=steps,
-                                                            epochs=epochs,
-                                                            callbacks=[callbacks])
+    train_x = CMDS.train.x.reshape(-1, 98, 40, 1)
+    train_y = np_utils.to_categorical(CMDS.train.y, NUM_CLASSES)
+    model.fit(train_x, train_y, epochs=EPOCHS, callbacks=[callbacks], batch_size=BATCH_SIZE)
 
-    x, y = CMDS.test.fetch_batch(0, 100)
-    x_test = x.reshape(-1, 98, 40, 1)
-    y_test = np_utils.to_categorical(y, NUM_CLASSES)
-
-    predictions = model.predict(x_test, batch_size=100)
-    classes = np.argmax(predictions, axis=1)
-
-    print(confusion_matrix(y, classes))
+main()
